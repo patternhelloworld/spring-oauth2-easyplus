@@ -15,9 +15,12 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
 import org.springframework.restdocs.mockmvc.RestDocumentationResultHandler;
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.io.UnsupportedEncodingException;
@@ -72,16 +75,25 @@ public class AuthorizationIntegrationTest {
         basicHeader = "Basic " + DatatypeConverter.printBase64Binary((appUserClientId + ":" + appUserClientSecret).getBytes("UTF-8"));
 
     }
+
     @Test
     public void testAuthorizationCodeMissingException() throws Exception {
-        MvcResult result = mockMvc.perform(get("/oauth2/authorize?response_type=code&client_id=client_customer&state=xxx&scope=read&redirect_uri=http://localhost:8081/callback1"))
-                .andExpect(status().is2xxSuccessful())
-                .andDo(print())
-                .andReturn();
-        assertEquals("/login", result.getResponse().getForwardedUrl());
-/*        String responseContent = result.getResponse().getContentAsString(StandardCharsets.UTF_8);
-        assertTrue(responseContent.contains("AUTHENTICATION_AUTHORIZATION_CODE_MISSING"),
-                "The response should contain the error code 'AUTHENTICATION_AUTHORIZATION_CODE_MISSING'.");*/
+        MultiValueMap<String, String> parameters = new LinkedMultiValueMap<>();
+        parameters.set(OAuth2ParameterNames.RESPONSE_TYPE, "code");
+        parameters.set(OAuth2ParameterNames.CLIENT_ID, "client_customer");
+        parameters.set(OAuth2ParameterNames.REDIRECT_URI, "http://localhost:8081/callback1");
+        parameters.set(OAuth2ParameterNames.SCOPE, "read");
+        parameters.set(OAuth2ParameterNames.STATE, "xxx");
+
+        MvcResult result = mockMvc.perform(get("/oauth2/authorize")
+                        .queryParams(parameters))
+                        .andExpect(status().is2xxSuccessful())
+                        .andDo(print())
+                        .andReturn();
+
+        assertEquals("/login", result.getResponse().getForwardedUrl(),
+                "The request should be forwarded to the login page due to missing authorization code.");
     }
+
 
 }
